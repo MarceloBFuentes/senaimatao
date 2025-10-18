@@ -1,524 +1,260 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Painel de Controle ESP32 - Monitoramento & Automação</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
-    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
-    <style>
-        /* Variáveis CSS para fácil personalização */
-        :root {
-            --bg-color: #0d1117; /* Fundo escuro GitHub-like */
-            --panel-bg-color: #161b22; /* Fundo do painel */
-            --card-bg-color: #21262d; /* Fundo dos cards */
-            --border-color: #30363d; /* Cor da borda */
-            --text-color-light: #c9d1d9; /* Texto claro */
-            --text-color-dark: #8b949e; /* Texto mais escuro */
-            --highlight-green: #3fb950; /* Verde para destaque/ativo */
-            --highlight-blue: #58a6ff; /* Azul para destaque/ações */
-            --highlight-red: #f85149; /* Vermelho para alerta/off */
-            --font-display: 'Orbitron', sans-serif; /* Fonte para títulos */
-            --font-data: 'Share Tech Mono', monospace; /* Fonte para dados */
-            --border-radius-base: 6px;
-            --spacing-unit: 1rem; /* 16px */
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Painel IoT - Controle Completo do ESP32</title>
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 
-        body {
-            font-family: Arial, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color-light);
-            margin: 0;
-            padding: var(--spacing-unit) * 2;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            min-height: 100vh;
-            line-height: 1.6;
-            overflow-x: hidden; /* Evita rolagem horizontal */
-        }
+<style>
+  body {
+    font-family: 'Segoe UI', sans-serif;
+    background: linear-gradient(135deg, #e3f2fd, #f8f9fa);
+    margin: 0;
+    padding: 0;
+    text-align: center;
+  }
 
-        /* Estrutura principal do painel */
-        .dashboard-container {
-            display: grid;
-            grid-template-columns: 1fr; /* Padrão para mobile */
-            gap: var(--spacing-unit);
-            width: 100%;
-            max-width: 1200px;
-            margin-top: var(--spacing-unit) * 2;
-        }
+  h1 {
+    color: #004aad;
+    margin-top: 20px;
+  }
 
-        @media (min-width: 768px) {
-            .dashboard-container {
-                grid-template-columns: 2fr 1fr; /* Duas colunas em telas maiores */
-            }
-        }
+  .section {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+    padding: 20px;
+    margin: 20px auto;
+    width: 90%;
+    max-width: 800px;
+  }
 
-        .main-panel, .sidebar-panel {
-            background-color: var(--panel-bg-color);
-            border: 1px solid var(--border-color);
-            border-radius: var(--border-radius-base);
-            padding: var(--spacing-unit) * 1.5;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
-        }
+  /* Indicadores de sensores */
+  .sensor-box {
+    display: flex;
+    justify-content: space-around;
+    flex-wrap: wrap;
+  }
 
-        .main-panel {
-            grid-column: 1 / -1; /* Ocupa toda a largura em mobile */
-        }
+  .sensor {
+    background: #f4f4f4;
+    border-radius: 10px;
+    padding: 15px;
+    margin: 10px;
+    width: 150px;
+    box-shadow: inset 0 0 6px rgba(0,0,0,0.1);
+  }
 
-        @media (min-width: 768px) {
-            .main-panel {
-                grid-column: 1 / 2; /* Primeira coluna em desktop */
-            }
-            .sidebar-panel {
-                grid-column: 2 / 3; /* Segunda coluna em desktop */
-            }
-        }
+  .sensor h3 { margin: 0; color: #555; }
+  .sensor span { font-size: 26px; font-weight: bold; color: #333; }
 
-        /* Títulos */
-        h1 {
-            font-family: var(--font-display);
-            font-size: 2.8em;
-            color: var(--highlight-blue);
-            text-align: center;
-            margin-bottom: var(--spacing-unit) * 2;
-            letter-spacing: 2px;
-            text-shadow: 0 0 10px rgba(88, 166, 255, 0.5);
-            animation: fadeIn 1s ease-out;
-        }
+  /* Indicadores LED */
+  .leds {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    margin-top: 15px;
+  }
 
-        h2 {
-            font-family: var(--font-display);
-            font-size: 1.6em;
-            color: var(--text-color-light);
-            margin-top: var(--spacing-unit) * 2;
-            margin-bottom: var(--spacing-unit);
-            padding-bottom: var(--spacing-unit) / 2;
-            border-bottom: 1px solid var(--border-color);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
+  .led {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #ccc;
+    box-shadow: inset 0 0 8px rgba(0,0,0,0.2);
+    transition: background 0.3s, box-shadow 0.3s;
+  }
 
-        h2 .fas {
-            color: var(--highlight-green);
-        }
+  .led.on {
+    background: #00e676;
+    box-shadow: 0 0 15px #00e676;
+  }
 
-        /* Cards de Dados */
-        .data-cards {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: var(--spacing-unit);
-            margin-bottom: var(--spacing-unit) * 2;
-        }
+  button {
+    margin: 6px;
+    padding: 10px 18px;
+    border: none;
+    border-radius: 8px;
+    background: #007bff;
+    color: white;
+    cursor: pointer;
+    transition: background 0.3s;
+  }
+  button:hover { background: #0056b3; }
 
-        .data-card {
-            background-color: var(--card-bg-color);
-            border: 1px solid var(--border-color);
-            border-left: 5px solid var(--highlight-green); /* Borda de destaque */
-            border-radius: var(--border-radius-base);
-            padding: var(--spacing-unit) * 1.2;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-        }
+  /* Controle da garra */
+  .slider-container {
+    margin: 20px auto;
+    background: #fefefe;
+    border-radius: 10px;
+    padding: 20px;
+    width: 80%;
+    max-width: 400px;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+  }
 
-        .data-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
-        }
+  input[type=range] {
+    width: 90%;
+    height: 25px;
+    cursor: pointer;
+  }
 
-        .data-card p {
-            margin: 0;
-            font-size: 0.95em;
-            color: var(--text-color-dark);
-        }
-
-        .data-card .value {
-            font-family: var(--font-data);
-            font-size: 2em;
-            color: var(--highlight-green);
-            font-weight: bold;
-            margin-top: var(--spacing-unit) / 2;
-            display: flex;
-            align-items: baseline;
-            gap: 5px;
-        }
-
-        .data-card .unit {
-            font-size: 0.6em;
-            color: var(--text-color-dark);
-            align-self: flex-end;
-        }
-
-        /* Controle de LEDs */
-        .control-section {
-            display: flex;
-            flex-direction: column;
-            gap: var(--spacing-unit);
-        }
-
-        .led-group {
-            background-color: var(--card-bg-color);
-            border: 1px solid var(--border-color);
-            border-radius: var(--border-radius-base);
-            padding: var(--spacing-unit);
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: var(--spacing-unit) / 2;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-        }
-
-        .led-group-all {
-             background-color: var(--card-bg-color);
-            border: 1px solid var(--border-color);
-            border-radius: var(--border-radius-base);
-            padding: var(--spacing-unit);
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: var(--spacing-unit) / 2;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-            margin-top: var(--spacing-unit);
-        }
-
-        /* Botões em geral */
-        button {
-            background-color: var(--card-bg-color); /* Padrão mais neutro */
-            color: var(--text-color-light);
-            border: 1px solid var(--border-color);
-            border-radius: var(--border-radius-base);
-            padding: 12px 20px;
-            font-family: var(--font-data);
-            font-size: 0.9em;
-            cursor: pointer;
-            transition: background-color 0.3s ease, color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
-            min-width: 100px;
-            flex-grow: 1;
-        }
-
-        button:hover {
-            background-color: var(--highlight-blue);
-            color: var(--bg-color);
-            transform: translateY(-2px);
-            box-shadow: 0 0 15px var(--highlight-blue);
-        }
-        
-        /* Estilos específicos para botões ON/OFF */
-        button.on {
-            background-color: var(--highlight-green);
-            color: var(--bg-color);
-            border-color: var(--highlight-green);
-        }
-        button.on:hover {
-            background-color: #319e3e; /* darken green */
-        }
-
-        button.off {
-            background-color: var(--highlight-red);
-            color: var(--bg-color);
-            border-color: var(--highlight-red);
-        }
-        button.off:hover {
-            background-color: #d83d36; /* darken red */
-        }
-
-        /* Botão de Conectar/Desconectar */
-        #connectButton {
-            background-color: var(--highlight-blue);
-            color: var(--bg-color);
-            font-weight: bold;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            margin-bottom: var(--spacing-unit);
-            border-color: var(--highlight-blue);
-        }
-
-        #connectButton:hover {
-            background-color: #438fdf; /* darken blue */
-            box-shadow: 0 0 20px var(--highlight-blue);
-        }
-        #connectButton.connected {
-            background-color: var(--highlight-red); /* Mudar para vermelho quando conectado */
-            border-color: var(--highlight-red);
-        }
-        #connectButton.connected:hover {
-            background-color: #d83d36; /* darken red */
-        }
-
-
-        button:active {
-            transform: translateY(0);
-            box-shadow: none;
-        }
-
-        /* Efeito de feedback visual para o clique */
-        .button-feedback {
-            animation: pulse 0.6s ease-out;
-        }
-
-        @keyframes pulse {
-            0% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.05); opacity: 0.8; box-shadow: 0 0 20px var(--highlight-blue); }
-            100% { transform: scale(1); opacity: 1; }
-        }
-
-        /* Animação de fade-in para elementos */
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-fade-in {
-            animation: fadeIn 0.8s ease-out forwards;
-        }
-
-        /* Conexão Status */
-        .connection-status {
-            font-family: var(--font-data);
-            font-size: 0.9em;
-            text-align: center;
-            margin-top: var(--spacing-unit);
-            padding: var(--spacing-unit) / 2;
-            border-radius: var(--border-radius-base);
-            background-color: var(--card-bg-color);
-            border: 1px solid var(--border-color);
-            color: var(--highlight-red); /* Padrão desconectado */
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            width: 100%;
-            max-width: 400px;
-        }
-
-        .connection-status.connected {
-            color: var(--highlight-green);
-        }
-
-        /* Efeitos visuais para o dashboard */
-        body::before {
-            content: '';
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: radial-gradient(circle at top left, rgba(88, 166, 255, 0.1), transparent 30%),
-                        radial-gradient(circle at bottom right, rgba(63, 185, 80, 0.1), transparent 30%);
-            z-index: -1;
-            opacity: 0.6;
-        }
-
-    </style>
+  /* Medidor circular */
+  .gauge-container {
+    margin: 20px auto;
+    width: 180px;
+    height: 180px;
+    position: relative;
+  }
+  .gauge {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: conic-gradient(#4caf50 0deg, #ddd 0deg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .gauge-value {
+    position: absolute;
+    font-size: 28px;
+    font-weight: bold;
+    color: #222;
+  }
+</style>
 </head>
 <body>
-    <h1><i class="fas fa-microchip"></i> Painel de Controle ESP32</h1>
-    
-    <button id="connectButton" onclick="toggleMqttConnection(this)"><i class="fas fa-plug"></i> Conectar ao MQTT</button>
-    
-    <div class="connection-status" id="connectionStatus">
-        <i class="fas fa-unlink"></i> Desconectado do MQTT
+
+<h1>🌐 Painel IoT - Controle Completo do ESP32</h1>
+
+<!-- Sensores -->
+<div class="section">
+  <h2>📊 Monitoramento de Sensores</h2>
+  <div class="sensor-box">
+    <div class="sensor">
+      <h3>🌡️ Temperatura</h3>
+      <span id="temp">--</span> °C
     </div>
-
-    <div class="dashboard-container">
-        <div class="main-panel animate-fade-in">
-            <h2><i class="fas fa-chart-line"></i> Dados do Sensor</h2>
-            <div class="data-cards">
-                <div class="data-card">
-                    <p>Temperatura</p>
-                    <div class="value"><span id="temp">-</span> <span class="unit">°C</span></div>
-                </div>
-                <div class="data-card">
-                    <p>Umidade</p>
-                    <div class="value"><span id="umidade">-</span> <span class="unit">%</span></div>
-                </div>
-                <div class="data-card">
-                    <p>Distância Ultrassônica</p>
-                    <div class="value"><span id="dist">-</span> <span class="unit">cm</span></div>
-                </div>
-            </div>
-        </div>
-
-        <div class="sidebar-panel animate-fade-in" style="animation-delay: 0.2s;">
-            <h2><i class="fas fa-lightbulb"></i> Controle dos LEDs</h2>
-            <div class="control-section">
-                <div class="led-group">
-                    <button class="on" onclick="toggleLed('L1ON', this)">LED 1 ON</button>
-                    <button class="off" onclick="toggleLed('L1OFF', this)">LED 1 OFF</button>
-                </div>
-                <div class="led-group">
-                    <button class="on" onclick="toggleLed('L2ON', this)">LED 2 ON</button>
-                    <button class="off" onclick="toggleLed('L2OFF', this)">LED 2 OFF</button>
-                </div>
-                <div class="led-group">
-                    <button class="on" onclick="toggleLed('L3ON', this)">LED 3 ON</button>
-                    <button class="off" onclick="toggleLed('L3OFF', this)">LED 3 OFF</button>
-                </div>
-                <div class="led-group-all">
-                    <button class="on" onclick="toggleLed('ALLON', this)"><i class="fas fa-toggle-on"></i> TODOS ON</button>
-                    <button class="off" onclick="toggleLed('ALLOFF', this)"><i class="fas fa-toggle-off"></i> TODOS OFF</button>
-                </div>
-            </div>
-        </div>
+    <div class="sensor">
+      <h3>💧 Umidade</h3>
+      <span id="umidade">--</span> %
     </div>
+    <div class="sensor">
+      <h3>📏 Distância</h3>
+      <span id="dist">--</span> cm
+    </div>
+  </div>
+</div>
 
-    <script>
-        const MQTT_BROKER = 'wss://broker.hivemq.com:8884/mqtt';
+<!-- Controle de LEDs -->
+<div class="section">
+  <h2>💡 Controle dos LEDs</h2>
+  <div class="leds">
+    <div class="led" id="led1"></div>
+    <div class="led" id="led2"></div>
+    <div class="led" id="led3"></div>
+  </div>
+  <div>
+    <button onclick="toggleLed('L1ON')">LED1 ON</button>
+    <button onclick="toggleLed('L1OFF')">LED1 OFF</button>
+    <button onclick="toggleLed('L2ON')">LED2 ON</button>
+    <button onclick="toggleLed('L2OFF')">LED2 OFF</button>
+    <button onclick="toggleLed('L3ON')">LED3 ON</button>
+    <button onclick="toggleLed('L3OFF')">LED3 OFF</button><br>
+    <button onclick="toggleLed('ALLON')">Todos ON</button>
+    <button onclick="toggleLed('ALLOFF')">Todos OFF</button>
+  </div>
+</div>
 
+<!-- Controle da Garra -->
+<div class="section">
+  <h2>🤖 Controle Manual da Garra</h2>
+  <div class="slider-container">
+    <p>Ângulo da Garra: <span id="angulo">0</span>°</p>
+    <input type="range" id="garraSlider" min="0" max="180" value="0" step="1" oninput="updateGarra(this.value)">
+    <div class="gauge-container">
+      <div class="gauge" id="gauge">
+        <div class="gauge-value" id="gauge-value">0°</div>
+      </div>
+    </div>
+  </div>
+</div>
 
-        const TOPIC_LED = 'casasenai/esp32/leds';
-        const TOPIC_DHT = 'casasenai/esp32/dht22';
-        const TOPIC_ULTRA = 'casasenai/esp32/ultrasonic';
+<script>
+  // === Configurações MQTT ===
+  const MQTT_BROKER = 'wss://broker.hivemq.com:8884/mqtt';
+  const TOPIC_LED   = 'casasenai/esp32/leds';
+  const TOPIC_DHT   = 'casasenai/esp32/dht22';
+  const TOPIC_ULTRA = 'casasenai/esp32/ultrasonic';
+  const TOPIC_GARRA = 'casasenai/esp32/garra';
 
-        const connectionStatusElement = document.getElementById('connectionStatus');
-        const connectButton = document.getElementById('connectButton');
-        let client = null; // A variável client será inicializada apenas na conexão
+  const client = mqtt.connect(MQTT_BROKER);
 
-        // Função para iniciar a conexão MQTT
-        function connectMqtt() {
-            if (client && client.connected) {
-                console.log('Já conectado ao MQTT.');
-                return;
-            }
+  client.on('connect', () => {
+    console.log('✅ Conectado ao HiveMQ via WebSocket');
+    client.subscribe(TOPIC_DHT);
+    client.subscribe(TOPIC_ULTRA);
+  });
 
-            connectionStatusElement.innerHTML = '<i class="fas fa-sync-alt fa-spin"></i> Conectando ao MQTT...';
-            connectionStatusElement.classList.remove('connected');
-            connectButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Conectando...';
-            connectButton.disabled = true;
+  client.on('message', (topic, message) => {
+    try {
+      const data = JSON.parse(message.toString());
+      if (topic === TOPIC_DHT) {
+        document.getElementById('temp').textContent = data.temperatura.toFixed(1);
+        document.getElementById('umidade').textContent = data.umidade.toFixed(1);
+      }
+      if (topic === TOPIC_ULTRA) {
+        document.getElementById('dist').textContent = data.distancia.toFixed(1);
+      }
+    } catch (e) {}
+  });
 
-            // Se o cliente já existe mas está desconectado, tentamos reconectar
-            if (client) {
-                client.reconnect();
-            } else {
-                client = mqtt.connect(MQTT_BROKER); // Cria um novo cliente
-                setupMqttClientEvents(); // Configura os eventos para o novo cliente
-            }
-        }
+  function publish(topic, msg) {
+    client.publish(topic, msg);
+    console.log('📤 Publicado:', topic, msg);
+  }
 
-        // Função para desconectar o cliente MQTT
-        function disconnectMqtt() {
-            if (client && client.connected) {
-                client.end(false, () => { // false para não forçar desconexão imediata
-                    console.log('Desconectado do MQTT.');
-                    client = null; // Limpa o cliente após desconexão
-                    updateConnectionStatus(false);
-                });
-            } else {
-                console.log('Cliente MQTT já desconectado.');
-                updateConnectionStatus(false);
-            }
-        }
+  // === LEDs ===
+  const leds = {
+    L1ON: 'led1', L1OFF: 'led1',
+    L2ON: 'led2', L2OFF: 'led2',
+    L3ON: 'led3', L3OFF: 'led3',
+  };
 
-        // Função para alternar a conexão (chamada pelo botão)
-        function toggleMqttConnection(buttonElement) {
-            if (client && client.connected) {
-                disconnectMqtt();
-            } else {
-                connectMqtt();
-            }
-            if (buttonElement) {
-                buttonElement.classList.add('button-feedback');
-                setTimeout(() => {
-                    buttonElement.classList.remove('button-feedback');
-                }, 600);
-            }
-        }
+  function toggleLed(cmd) {
+    publish(TOPIC_LED, cmd);
+    const ledId = leds[cmd];
+    if (!ledId) return;
 
-        // Função para atualizar o status visual da conexão
-        function updateConnectionStatus(isConnected) {
-            if (isConnected) {
-                connectionStatusElement.innerHTML = '<i class="fas fa-link"></i> Conectado ao MQTT';
-                connectionStatusElement.classList.add('connected');
-                connectButton.innerHTML = '<i class="fas fa-unlink"></i> Desconectar';
-                connectButton.classList.add('connected');
-            } else {
-                connectionStatusElement.innerHTML = '<i class="fas fa-unlink"></i> Desconectado do MQTT';
-                connectionStatusElement.classList.remove('connected');
-                connectButton.innerHTML = '<i class="fas fa-plug"></i> Conectar ao MQTT';
-                connectButton.classList.remove('connected');
-            }
-            connectButton.disabled = false; // Reabilita o botão após a tentativa
-        }
+    const led = document.getElementById(ledId);
+    if (cmd.includes('ON')) led.classList.add('on');
+    else led.classList.remove('on');
 
-        // Configura os eventos do cliente MQTT
-        function setupMqttClientEvents() {
-            client.on('connect', () => {
-                console.log('Conectado ao MQTT via WebSocket');
-                client.subscribe(TOPIC_DHT);
-                client.subscribe(TOPIC_ULTRA);
-                updateConnectionStatus(true);
-            });
+    if (cmd === 'ALLON') document.querySelectorAll('.led').forEach(l => l.classList.add('on'));
+    if (cmd === 'ALLOFF') document.querySelectorAll('.led').forEach(l => l.classList.remove('on'));
+  }
 
-            client.on('reconnect', () => {
-                connectionStatusElement.innerHTML = '<i class="fas fa-sync-alt fa-spin"></i> Reconectando ao MQTT...';
-                connectionStatusElement.classList.remove('connected');
-                connectButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Conectando...';
-                connectButton.disabled = true;
-            });
+  // === Controle da Garra ===
+  let ultimoEnvio = 0;
+  const gauge = document.getElementById("gauge");
+  const gaugeValue = document.getElementById("gauge-value");
+  const anguloSpan = document.getElementById("angulo");
 
-            client.on('error', (err) => {
-                console.error('Erro de conexão MQTT:', err);
-                connectionStatusElement.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Erro de Conexão MQTT!';
-                connectionStatusElement.classList.remove('connected');
-                updateConnectionStatus(false);
-                if (client) client.end(); // Encerrar para tentar nova conexão limpa
-                client = null;
-            });
+  function updateGarra(valor) {
+    anguloSpan.textContent = valor;
+    gaugeValue.textContent = valor + "°";
 
-            client.on('close', () => {
-                console.log('Conexão MQTT fechada');
-                updateConnectionStatus(false);
-            });
+    const cor = valor < 90 ? '#4caf50' : valor < 150 ? '#ffc107' : '#f44336';
+    gauge.style.background = `conic-gradient(${cor} ${valor*2}deg, #ddd ${valor*2}deg)`;
 
-            client.on('message', (topic, message) => {
-                const msg = message.toString();
-                if(topic === TOPIC_DHT) {
-                    try {
-                        const data = JSON.parse(msg);
-                        document.getElementById('temp').textContent = data.temperatura.toFixed(1);
-                        document.getElementById('umidade').textContent = data.umidade.toFixed(1);
-                    } catch(e) {
-                        console.error('Erro ao ler dados DHT', e);
-                    }
-                } else if (topic === TOPIC_ULTRA) {
-                    try {
-                        const data = JSON.parse(msg);
-                        document.getElementById('dist').textContent = data.distancia.toFixed(1);
-                    } catch(e) {
-                        console.error('Erro ao ler dados Ultrassônico', e);
-                    }
-                }
-            });
-        }
+    const agora = Date.now();
+    if (agora - ultimoEnvio > 100) {
+      client.publish(TOPIC_GARRA, valor.toString());
+      ultimoEnvio = agora;
+    }
+  }
+</script>
 
-        function toggleLed(command, buttonElement) {
-            if (client && client.connected) {
-                client.publish(TOPIC_LED, command);
-                if (buttonElement) {
-                    buttonElement.classList.add('button-feedback');
-                    setTimeout(() => {
-                        buttonElement.classList.remove('button-feedback');
-                    }, 600);
-                }
-            } else {
-                alert('Não conectado ao MQTT. Por favor, conecte-se primeiro!');
-                // Opcional: Adicionar feedback visual ao botão de conectar
-                connectButton.classList.add('button-feedback');
-                setTimeout(() => {
-                    connectButton.classList.remove('button-feedback');
-                }, 600);
-            }
-        }
-
-        // Estado inicial
-        updateConnectionStatus(false);
-
-    </script>
 </body>
 </html>
